@@ -235,8 +235,8 @@ public class EightPuzzleSolver {
             // Default example
             startState = new int[][]{
                 {1, 3, 6},
-                {5, 0, 7},
-                {4, 8, 2}
+                {5, 0, 2},
+                {4, 7, 8}
             };
             System.out.println("Using default puzzle:");
             printPuzzle(startState);
@@ -254,7 +254,12 @@ public class EightPuzzleSolver {
         System.out.println("Select search method: \n1: Uniform Cost \n2: Misplaced Tiles \n3: Manhattan Distance");
         int method = sc.nextInt();
 
+        // Measure execution time in seconds
+        long startTime = System.nanoTime();
         solve(startState, goalState, method);
+        long endTime = System.nanoTime();
+        double elapsedSec = (endTime - startTime) / 1000000000.0;
+        System.out.println("Time taken (s): " + elapsedSec);
         sc.close();
     }
 }
