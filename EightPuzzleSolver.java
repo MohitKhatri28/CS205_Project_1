@@ -151,25 +151,30 @@ public class EightPuzzleSolver {
         return new int[]{0, 0};
     }
 
-    // Core A* (or UCS) search driver
     static void solve(int[][] start, int[][] goal, int method) {
         // Min-heap ordered by f = g + h
         PriorityQueue<Puzzle> min_heap = new PriorityQueue<>((p1, p2) -> p1.f - p2.f);
+        // stateMap used to track best g for states
+        Map<String, Puzzle> stateMap = new HashMap<>();
         Set<String> visited = new HashSet<>();
 
         // Initialize search
         int[] blankPos = findBlank(start);
         int startH = getHeuristic(start, goal, method);
         Puzzle firstPuzzle = new Puzzle(start, null, 0, startH, blankPos[0], blankPos[1]);
+        String key = stateToString(start);
         min_heap.add(firstPuzzle);
-        visited.add(stateToString(start));
+        stateMap.put(key, firstPuzzle);
 
         int nodesExpanded = 0;
         int maxQueueSize = 1;
 
         // Expand nodes
         while (!min_heap.isEmpty()) {
-            Puzzle current = min_heap.remove();
+            Puzzle current = min_heap.poll();
+            String currentKey = stateToString(current.state);
+            stateMap.remove(currentKey); // Remove from stateMap as it's being expanded
+            visited.add(currentKey);    
             nodesExpanded++;
 
             // Print expanding node
@@ -188,17 +193,29 @@ public class EightPuzzleSolver {
                 return;
             }
 
-            // Moves blank in each direction
+            // Move blank in each direction
             for (int[] dir : DIRECTIONS) {
                 Puzzle nextPuzzle = moveBlank(current, dir, goal, method);
-                if (nextPuzzle != null && !visited.contains(stateToString(nextPuzzle.state))) {
-                    min_heap.add(nextPuzzle);
-                    visited.add(stateToString(nextPuzzle.state));
-                    maxQueueSize = Math.max(maxQueueSize, min_heap.size());
+                if (nextPuzzle != null) {
+                    String nextKey = stateToString(nextPuzzle.state);
+                    if (visited.contains(nextKey)) {
+                        continue; // Skip if already expanded
+                    }
+                    Puzzle existing = stateMap.get(nextKey);
+                    if (existing == null) {
+                        // New state: add to stateMap and queue
+                        min_heap.add(nextPuzzle);
+                        stateMap.put(nextKey, nextPuzzle);
+                        maxQueueSize = Math.max(maxQueueSize, min_heap.size());
+                    } else if (nextPuzzle.g < existing.g) {
+                        // Better path found: update stateMap
+                        min_heap.remove(existing);
+                        min_heap.add(nextPuzzle);
+                        stateMap.put(nextKey, nextPuzzle);
+                    }
                 }
             }
         }
-
         System.out.println("No solution found.");
     }
     public static void main(String[] args) {
@@ -217,8 +234,8 @@ public class EightPuzzleSolver {
         if (option == 1) {
             // Default example
             startState = new int[][]{
-                {1, 6, 7},
-                {5, 0, 3},
+                {1, 3, 6},
+                {5, 0, 7},
                 {4, 8, 2}
             };
             System.out.println("Using default puzzle:");
