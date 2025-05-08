@@ -63,7 +63,7 @@ public class EightPuzzleSolver {
     }
 
     // Prints the puzzle grid
-    static void printPuzzle(int[][] state) {
+    static void printState(int[][] state) {
         for (int[] row : state) {
             System.out.println(Arrays.toString(row));
         }
@@ -105,8 +105,10 @@ public class EightPuzzleSolver {
     static int getHeuristic(int[][] state, int[][] goal, int method) {
         switch (method) {
             case 1: 
+                //Uniform Cost Search: h(n) = 0
                 return 0;
             case 2: 
+                //Misplaced Tile: count the number of tiles not in their correct positions
                 int misplaced = 0;
                 for (int i = 0; i < GRID_SIZE; i++) {
                     for (int j = 0; j < GRID_SIZE; j++) {
@@ -116,7 +118,8 @@ public class EightPuzzleSolver {
                     }
                 }
                 return misplaced;
-            case 3:
+            case 3: 
+                //Manhattam Distance: calculate distance from goal state
                 int dist = 0;
                 for (int i = 0; i < GRID_SIZE; i++) {
                     for (int j = 0; j < GRID_SIZE; j++) {
@@ -151,74 +154,87 @@ public class EightPuzzleSolver {
         return new int[]{0, 0};
     }
 
-    static void solve(int[][] start, int[][] goal, int method) {
+    /* 
+     * Implements the “general-search” driver:
+     * nodes = MAKE-QUEUE(MAKE-NODE(problem.INITIAL-STATE))
+     * loop do
+     *   if EMPTY(nodes) then return failure
+     *   node = REMOVE-FRONT(nodes)
+     *   if GOAL-TEST then return node
+     *   nodes = QUEUEING-FN(nodes, EXPAND(node))
+     * end
+     */
+    static void generalSearch(int[][] initialState, int[][] goal, int method) {
         // Min-heap ordered by f = g + h
-        PriorityQueue<Puzzle> min_heap = new PriorityQueue<>((p1, p2) -> p1.f - p2.f);
+        PriorityQueue<Puzzle> nodes = new PriorityQueue<>((p1, p2) -> p1.f - p2.f);
         // stateMap used to track best g for states
         Map<String, Puzzle> stateMap = new HashMap<>();
-        Set<String> visited = new HashSet<>();
+        Set<String> explored = new HashSet<>();
 
         // Initialize search
-        int[] blankPos = findBlank(start);
-        int startH = getHeuristic(start, goal, method);
-        Puzzle firstPuzzle = new Puzzle(start, null, 0, startH, blankPos[0], blankPos[1]);
-        String key = stateToString(start);
-        min_heap.add(firstPuzzle);
-        stateMap.put(key, firstPuzzle);
+        int[] blankPos = findBlank(initialState);
+        int startH = getHeuristic(initialState, goal, method);
+        Puzzle first = new Puzzle(initialState, null, 0, startH, blankPos[0], blankPos[1]);
+        String startKey = stateToString(initialState);
+        nodes.add(first);
+        stateMap.put(startKey, first);
 
-        int nodesExpanded = 0;
+        int nodesExpanded = 0; 
         int maxQueueSize = 1;
 
         // Expand nodes
-        while (!min_heap.isEmpty()) {
-            Puzzle current = min_heap.poll();
-            String currentKey = stateToString(current.state);
-            stateMap.remove(currentKey); // Remove from stateMap as it's being expanded
-            visited.add(currentKey);    
+        while (!nodes.isEmpty()) {
+            Puzzle currentNode = nodes.poll();
+            String curKey = stateToString(currentNode.state);
+            stateMap.remove(curKey); // Remove from stateMap as it's being expanded
+            explored.add(curKey);
             nodesExpanded++;
 
             // Print expanding node
-            System.out.println("The best state to expand with g(n)=" + current.g + ", h(n)=" + current.h + ":");
-            printPuzzle(current.state);
+            System.out.println("The best state to expand with g(n)=" + currentNode.g + ", h(n)=" + currentNode.h + ":");
+            printState(currentNode.state);
             System.out.println();
 
             // Check if goal state is reached
-            if (isGoal(current.state, goal)) {
+            if (isGoal(currentNode.state, goal)) {
                 System.out.println("Goal reached!");
-                System.out.println("Solution depth: " + current.g);
+                System.out.println("Solution depth: " + currentNode.g);
                 System.out.println("Nodes expanded: " + nodesExpanded);
                 System.out.println("Max queue size: " + maxQueueSize);
                 System.out.println("Solution path:");
-                showSolution(current);
+                showSolution(currentNode);
                 return;
             }
 
             // Move blank in each direction
             for (int[] dir : DIRECTIONS) {
-                Puzzle nextPuzzle = moveBlank(current, dir, goal, method);
-                if (nextPuzzle != null) {
-                    String nextKey = stateToString(nextPuzzle.state);
-                    if (visited.contains(nextKey)) {
-                        continue; // Skip if already expanded
+                // Get next state after moving blank
+                Puzzle nextNode = moveBlank(currentNode, dir, goal, method);
+                if (nextNode != null) {
+                    String nextKey = stateToString(nextNode.state);
+                    if (explored.contains(nextKey)) {
+                        continue; // Skip if already explored
                     }
                     Puzzle existing = stateMap.get(nextKey);
                     if (existing == null) {
                         // New state: add to stateMap and queue
-                        min_heap.add(nextPuzzle);
-                        stateMap.put(nextKey, nextPuzzle);
-                        maxQueueSize = Math.max(maxQueueSize, min_heap.size());
-                    } else if (nextPuzzle.g < existing.g) {
+                        nodes.add(nextNode);
+                        stateMap.put(nextKey, nextNode);
+                        maxQueueSize = Math.max(maxQueueSize, nodes.size());
+                    } else if (nextNode.g < existing.g) {
                         // Better path found: update stateMap
-                        min_heap.remove(existing);
-                        min_heap.add(nextPuzzle);
-                        stateMap.put(nextKey, nextPuzzle);
+                        nodes.remove(existing);
+                        nodes.add(nextNode);
+                        stateMap.put(nextKey, nextNode);
                     }
                 }
             }
         }
         System.out.println("No solution found.");
     }
+
     public static void main(String[] args) {
+        // Goal State
         int[][] goalState = {
             {1, 2, 3},
             {4, 5, 6},
@@ -239,7 +255,7 @@ public class EightPuzzleSolver {
                 {4, 7, 8}
             };
             System.out.println("Using default puzzle:");
-            printPuzzle(startState);
+            printState(startState);
         } else {
             // Read puzzle from user row by row
             startState = new int[GRID_SIZE][GRID_SIZE];
@@ -255,11 +271,12 @@ public class EightPuzzleSolver {
         int method = sc.nextInt();
 
         // Measure execution time in seconds
-        long startTime = System.nanoTime();
-        solve(startState, goalState, method);
-        long endTime = System.nanoTime();
-        double elapsedSec = (endTime - startTime) / 1000000000.0;
+        long t0 = System.nanoTime();
+        generalSearch(startState, goalState, method);
+        long t1 = System.nanoTime();
+        double elapsedSec = (t1 - t0) / 1_000_000_000.0;
         System.out.println("Time taken (s): " + elapsedSec);
+
         sc.close();
     }
 }
