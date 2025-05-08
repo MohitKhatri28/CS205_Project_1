@@ -271,10 +271,10 @@ public class EightPuzzleSolver {
         int method = sc.nextInt();
 
         // Measure execution time in seconds
-        long t0 = System.nanoTime();
+        long startTime = System.nanoTime();
         generalSearch(startState, goalState, method);
-        long t1 = System.nanoTime();
-        double elapsedSec = (t1 - t0) / 1_000_000_000.0;
+        long endTime = System.nanoTime();
+        double elapsedSec = (endTime - startTime) / 1000000000.0;
         System.out.println("Time taken (s): " + elapsedSec);
 
         sc.close();
